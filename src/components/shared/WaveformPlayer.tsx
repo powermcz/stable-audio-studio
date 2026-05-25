@@ -110,7 +110,7 @@ export default function WaveformPlayer({
 
     wavesurferRef.current = ws
     return () => destroyWaveSurfer()
-  }, [enableRegions, height]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enableRegions, height])
 
   // Load audio when source changes
   useEffect(() => {
