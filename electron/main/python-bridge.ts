@@ -157,15 +157,24 @@ export class PythonBridge {
     if (is.dev) {
       return join(process.cwd(), 'python', 'venv', 'Scripts', 'python.exe')
     }
-    // In production, extraResources places python/ next to the app
-    return join(process.resourcesPath, 'python', 'venv', 'Scripts', 'python.exe')
+    // In production: try extraResources path first, fall back to source tree
+    const prodPath = join(process.resourcesPath, 'python', 'venv', 'Scripts', 'python.exe')
+    if (existsSync(prodPath)) return prodPath
+    // Fallback for running built output from source tree (e.g. Playwright tests)
+    const devPath = join(process.cwd(), 'python', 'venv', 'Scripts', 'python.exe')
+    if (existsSync(devPath)) return devPath
+    return prodPath // will trigger setup dialog
   }
 
   private getServerCwd(): string {
     if (is.dev) {
       return join(process.cwd(), 'python')
     }
-    return join(process.resourcesPath, 'python')
+    const prodPath = join(process.resourcesPath, 'python')
+    if (existsSync(join(prodPath, 'server'))) return prodPath
+    const devPath = join(process.cwd(), 'python')
+    if (existsSync(join(devPath, 'server'))) return devPath
+    return prodPath
   }
 
   private getServerScript(): string {

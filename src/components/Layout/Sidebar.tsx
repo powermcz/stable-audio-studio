@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { FiFolder, FiSliders, FiSettings } from 'react-icons/fi'
 import { FiMusic } from 'react-icons/fi'
+import logoImg from '/assets/logo-transparent.png'
 
 interface SidebarProps {
   currentView: 'generator' | 'library' | 'editor' | 'settings'
@@ -19,7 +20,7 @@ export default function Sidebar({ currentView, onNavigate }: SidebarProps) {
   return (
     <aside className="w-16 bg-surface-900 border-r border-surface-700 flex flex-col items-center py-4 gap-2">
       <div className="mb-4">
-        <img src="/assets/logo-transparent.png" alt="Logo" className="w-10 h-10 object-contain" />
+        <img src={logoImg} alt="" className="w-10 h-10 object-contain" />
       </div>
 
       {navItems.map((item) => (
