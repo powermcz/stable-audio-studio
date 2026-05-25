@@ -30,7 +30,7 @@ jobs:
       - name: Package Windows installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --config electron-builder.yml
+        run: npx electron-builder --win --config electron-builder.yml --publish never
 
       - name: Attest build artifacts
         uses: actions/attest-build-provenance@v2
@@ -40,8 +40,6 @@ jobs:
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/*.exe
-            release/*.exe.blockmap
+          files: release/Stable Audio Studio-Setup-*.exe
           draft: false
           generate_release_notes: true
