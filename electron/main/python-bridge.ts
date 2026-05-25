@@ -143,22 +143,11 @@ export class PythonBridge {
       updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
       await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
-      // Done - close progress and show completion
-      updateProgress('Setup complete!', 'Python environment is ready.', 100)
-      await new Promise((r) => setTimeout(r, 1500))
-      progressWin.close()
-
-      await dialog.showMessageBox({
-        type: 'info',
-        title: 'Setup Complete',
-        message: 'Python environment installed successfully!\n\n' +
-          'The app will now start. The Generator tab will guide you through\n' +
-          'connecting your HuggingFace account and downloading the AI model.',
-      })
-
+      // Done
+      progressWin.destroy()
       return true
     } catch (err) {
-      progressWin.close()
+      progressWin.destroy()
       await dialog.showMessageBox({
         type: 'error',
         title: 'Setup Failed',
