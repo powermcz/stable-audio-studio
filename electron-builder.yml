@@ -1,0 +1,53 @@
+appId: com.stableaudiostudio.app
+productName: Stable Audio Studio
+copyright: Copyright © 2025 powermcz
+
+directories:
+  buildResources: resources
+  output: release
+
+files:
+  - out/**/*
+  - "!out/renderer/assets/*.map"
+
+extraResources:
+  - from: python/
+    to: python/
+    filter:
+      - "server/**/*"
+      - "requirements.txt"
+      - "pyproject.toml"
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
+      - "!venv/**"
+      - "!tests/**"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: resources/icon.png
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: resources/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  artifactName: "${productName}-Setup-${version}.${ext}"

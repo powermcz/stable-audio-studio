@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+python/venv/
+python/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Build outputs
+dist/
+dist-electron/
+out/
+build/
+release/
+
+# Electron
+*.asar
+
+# Model cache
+models/
+*.safetensors
+*.ckpt
+*.pt
+*.bin
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Audio output (user-generated)
+output/
+library-data/
+
+# Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Test artifacts
+test-results/
+python/test_output.wav
+python/test_backend_output.wav
+playwright-report/
