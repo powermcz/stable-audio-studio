@@ -90,5 +90,5 @@ print("   Same seed → identical output ✓")
 
 # Save to disk for manual inspection
 sf.write("test_backend_output.wav", audio, sr)
-print(f"\nSaved test_backend_output.wav")
+print("\nSaved test_backend_output.wav")
 print("\n=== ALL BACKEND TESTS PASSED ===")

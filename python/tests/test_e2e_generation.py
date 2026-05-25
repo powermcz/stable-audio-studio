@@ -14,7 +14,6 @@ Usage:
 import base64
 import io
 import os
-import struct
 import time
 
 import pytest
