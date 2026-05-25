@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI-powered audio generation, right on your desktop.</strong><br/>
-  Generate production-ready sound effects, music loops, ambient textures, and more — all running locally on your GPU.<br/>
+  Generate production-ready sound effects, music loops, ambient textures, and more, all running locally on your GPU.<br/>
   No cloud. No subscriptions. No data leaves your machine.
 </p>
 
@@ -22,7 +22,7 @@
 
 ## What is Stable Audio Studio?
 
-Stable Audio Studio is a desktop application that puts the power of [Stable Audio Open 1.0](https://huggingface.co/stabilityai/stable-audio-open-1.0) — a state-of-the-art text-to-audio diffusion model — into a polished, production-oriented workflow. Type a description, click Generate, and get studio-quality audio in seconds.
+Stable Audio Studio is a desktop application that puts the power of [Stable Audio Open 1.0](https://huggingface.co/stabilityai/stable-audio-open-1.0), a state-of-the-art text-to-audio diffusion model, into a polished, production-oriented workflow. Type a description, click Generate, and get studio-quality audio in seconds.
 
 ### Who is it for?
 
@@ -31,7 +31,7 @@ Stable Audio Studio is a desktop application that puts the power of [Stable Audi
 | 🎮 **Game Developers** | Generate unique sound effects, ambient loops, UI sounds, and foley without licensing headaches |
 | 🎬 **Content Creators** | Create custom background music, transitions, intros, and atmospheric audio for videos and podcasts |
 | 🎵 **Music Producers** | Quickly prototype drum patterns, synth textures, bass lines, and vocal pads to spark ideas |
-| 🎧 **Sound Designers** | Build libraries of original sounds — from sci-fi to nature — tailored to your project |
+| 🎧 **Sound Designers** | Build libraries of original sounds (from sci-fi to nature) tailored to your project |
 | 📱 **App Developers** | Generate notification sounds, button clicks, and ambient audio for mobile and web apps |
 | 🎓 **Researchers & Students** | Experiment with generative audio models in an accessible GUI without writing code |
 
@@ -43,21 +43,21 @@ Stable Audio Studio is a desktop application that puts the power of [Stable Audi
 <tr>
 <td width="50%">
 <img src="assets/screenshots/generator.png" alt="Audio Generator" />
-<p align="center"><strong>⚡ Audio Generator</strong> — Text-to-audio with prompt suggestions, batch generation, and real-time progress</p>
+<p align="center"><strong>⚡ Audio Generator</strong>: Text-to-audio with prompt suggestions, batch generation, and real-time progress</p>
 </td>
 <td width="50%">
 <img src="assets/screenshots/settings.png" alt="Settings" />
-<p align="center"><strong>⚙️ Settings</strong> — GPU device, precision, generation defaults, export format, waveform colors</p>
+<p align="center"><strong>⚙️ Settings</strong>: GPU device, precision, generation defaults, export format, waveform colors</p>
 </td>
 </tr>
 <tr>
 <td width="50%">
 <img src="assets/screenshots/library.png" alt="Audio Library" />
-<p align="center"><strong>📁 Audio Library</strong> — Search, tag, favorite, sort, and manage your generated collection</p>
+<p align="center"><strong>📁 Audio Library</strong>: Search, tag, favorite, sort, and manage your generated collection</p>
 </td>
 <td width="50%">
 <img src="assets/screenshots/editor.png" alt="Waveform Editor" />
-<p align="center"><strong>✏️ Waveform Editor</strong> — Trim, fade, normalize, gain adjust with full undo/redo</p>
+<p align="center"><strong>✏️ Waveform Editor</strong>: Trim, fade, normalize, gain adjust with full undo/redo</p>
 </td>
 </tr>
 </table>
@@ -77,50 +77,50 @@ All samples below were generated with the app using Stable Audio Open 1.0 (50 st
 | [🎛️ synth-pad.wav](assets/samples/synth-pad.wav) | "Warm analog synth pad with slow filter sweep" | 10s |
 | [🎬 cinematic-hit.wav](assets/samples/cinematic-hit.wav) | "Cinematic orchestral hit with timpani and brass" | 5s |
 
-> **To listen:** Clone the repo and open any `.wav` file in your audio player — or better yet, [install the app](#installation) and generate your own!
+> **To listen:** Clone the repo and open any `.wav` file in your audio player, or better yet, [install the app](#installation) and generate your own!
 
 ---
 
 ## Features
 
 ### 🎛️ Generation
-- **Text-to-Audio** — Describe any sound and generate up to 47 seconds of stereo audio at 44.1kHz
-- **Batch Generation** — Generate 1–8 samples per run with auto-incrementing seeds for instant variations
-- **Generation Queue** — Queue additional batches while the current one is still running
-- **Prompt Suggestions** — 50 curated prompts across Music (♪) and Sound Effects (◆), randomly shuffled as clickable chips
-- **Parameter Presets** — Quick Draft, Balanced, High Quality, Long Form, and Max Length — one click to configure
-- **Auto-save** — Every generated sample is automatically saved to your library
-- **Real-time Progress** — Step-by-step progress bar; model loading status shown before first generation
+- **Text-to-Audio:** Describe any sound and generate up to 47 seconds of stereo audio at 44.1kHz
+- **Batch Generation:** Generate 1–8 samples per run with auto-incrementing seeds for instant variations
+- **Generation Queue:** Queue additional batches while the current one is still running
+- **Prompt Suggestions:** 50 curated prompts across Music (♪) and Sound Effects (◆), randomly shuffled as clickable chips
+- **Parameter Presets:** Quick Draft, Balanced, High Quality, Long Form, and Max Length. One click to configure
+- **Auto-save:** Every generated sample is automatically saved to your library
+- **Real-time Progress:** Step-by-step progress bar; model loading status shown before first generation
 
 ### 📁 Library
-- **Search & Filter** — Find samples by title, prompt text, or tags
-- **Tag Management** — Add, remove, and filter by custom tags
-- **Favorites** — Star your best samples for quick access
-- **Sort** — By date, duration, or title (ascending/descending)
-- **Bulk Operations** — Select multiple items for batch delete
-- **Inline Playback** — Expand any item to preview with a waveform player and loop toggle
+- **Search & Filter:** Find samples by title, prompt text, or tags
+- **Tag Management:** Add, remove, and filter by custom tags
+- **Favorites:** Star your best samples for quick access
+- **Sort:** By date, duration, or title (ascending/descending)
+- **Bulk Operations:** Select multiple items for batch delete
+- **Inline Playback:** Expand any item to preview with a waveform player and loop toggle
 
 ### ✏️ Audio Editor
-- **Waveform Visualization** — WaveSurfer.js with region selection (drag to select)
-- **Trim** — Cut to the selected region
-- **Fade In / Fade Out** — Adjustable duration with parameter popovers
-- **Normalize** — Peak normalization to 0 dB
-- **Gain** — Adjust volume in dB with clipping protection
-- **Undo / Redo** — Full 20-level undo stack (Ctrl+Z / Ctrl+Shift+Z)
-- **Drag & Drop** — Import external audio files directly into the editor
-- **Non-destructive** — Saves as a new copy; originals are preserved
+- **Waveform Visualization:** WaveSurfer.js with region selection (drag to select)
+- **Trim:** Cut to the selected region
+- **Fade In / Fade Out:** Adjustable duration with parameter popovers
+- **Normalize:** Peak normalization to 0 dB
+- **Gain:** Adjust volume in dB with clipping protection
+- **Undo / Redo:** Full 20-level undo stack (Ctrl+Z / Ctrl+Shift+Z)
+- **Drag & Drop:** Import external audio files directly into the editor
+- **Non-destructive:** Saves as a new copy; originals are preserved
 
 ### 📤 Export
-- **Multi-format** — WAV, FLAC, MP3, OGG with a format-selection dialog
-- **From anywhere** — Export from the generator, library, or editor
+- **Multi-format:** WAV, FLAC, MP3, OGG with a format-selection dialog
+- **From anywhere:** Export from the generator, library, or editor
 
 ### ⚙️ Settings
-- **Device** — Auto, CUDA (NVIDIA GPU), or CPU
-- **Precision** — FP16 (faster, less VRAM) or FP32 (higher precision)
-- **Generation Defaults** — Steps, CFG scale, duration, batch count, negative prompt
-- **Export Format** — Default output format
-- **Waveform Colors** — Custom waveform and progress bar colors
-- **Persisted** — All settings saved to disk via electron-store
+- **Device:** Auto, CUDA (NVIDIA GPU), or CPU
+- **Precision:** FP16 (faster, less VRAM) or FP32 (higher precision)
+- **Generation Defaults:** Steps, CFG scale, duration, batch count, negative prompt
+- **Export Format:** Default output format
+- **Waveform Colors:** Custom waveform and progress bar colors
+- **Persisted:** All settings saved to disk via electron-store
 
 ### 🎹 Keyboard Shortcuts
 | Shortcut | Action |
@@ -148,7 +148,7 @@ All samples below were generated with the app using Stable Audio Open 1.0 (50 st
 | ML Model | Stable Audio Open 1.0 via HuggingFace `diffusers` |
 | ML Runtime | PyTorch 2.5+ with CUDA 12.1 |
 | Audio Processing | torchaudio, soundfile, librosa, pydub |
-| Database | SQLite (sql.js — WASM, no native compilation) |
+| Database | SQLite (sql.js, WASM, no native compilation) |
 | Packaging | electron-builder |
 | E2E Testing | Playwright (Electron) + pytest (Python backend) |
 
@@ -158,11 +158,11 @@ All samples below were generated with the app using Stable Audio Open 1.0 (50 st
 
 ### Prerequisites
 
-- **Node.js** ≥ 18 — [download](https://nodejs.org/)
-- **Python** 3.10–3.12 — [download](https://www.python.org/downloads/)
+- **Node.js** ≥ 18: [download](https://nodejs.org/)
+- **Python** 3.10–3.12: [download](https://www.python.org/downloads/)
 - **NVIDIA GPU** with 8 GB+ VRAM and CUDA 12.1+ drivers (CPU works but is very slow)
 - **Git**
-- **HuggingFace account** — [Accept the Stable Audio Open 1.0 license](https://huggingface.co/stabilityai/stable-audio-open-1.0) (click "Agree")
+- **HuggingFace account**: [Accept the Stable Audio Open 1.0 license](https://huggingface.co/stabilityai/stable-audio-open-1.0) (click "Agree")
 
 ### Installation
 
@@ -257,7 +257,7 @@ On first launch, the model weights (~5 GB) will be downloaded and cached at `~/.
 | `ImportError: torchsde` | `pip install torchsde` in your venv |
 | `CUDA out of memory` | Close GPU apps. Model needs ~4 GB VRAM |
 | Python backend not starting | Check `python/venv/` exists. Run `npm run python:dev` to test |
-| `ERR_REQUIRE_ESM` | electron-store v10 needs dynamic import — already fixed in codebase |
+| `ERR_REQUIRE_ESM` | electron-store v10 needs dynamic import, already fixed in codebase |
 
 ---
 
