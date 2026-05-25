@@ -40,6 +40,8 @@ jobs:
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/Stable Audio Studio-Setup-*.exe
+          files: |
+            release/Stable Audio Studio-Setup-*.exe
+            release/latest.yml
           draft: false
           generate_release_notes: true

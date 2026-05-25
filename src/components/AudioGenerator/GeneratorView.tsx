@@ -219,6 +219,7 @@ export default function GeneratorView() {
   const [isGenerating, setIsGenerating] = useState(_isGenerating)
   const [stepProgress, setStepProgress] = useState({ step: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
+  const [backendConnected, setBackendConnected] = useState(true)
   const [modelStatus, setModelStatus] = useState<{
     loaded: boolean; loading: boolean; device: string;
     error: string | null; model_cached: boolean
@@ -238,11 +239,14 @@ export default function GeneratorView() {
     const check = async () => {
       try {
         const s = await window.api.getGenerationProgress()
+        setBackendConnected(true)
         setModelStatus({
           loaded: s.loaded, loading: s.loading, device: s.device,
           error: s.error || null, model_cached: s.model_cached ?? false
         })
-      } catch { /* ignore */ }
+      } catch {
+        setBackendConnected(false)
+      }
     }
     check()
     const interval = setInterval(check, 3000)
@@ -252,11 +256,12 @@ export default function GeneratorView() {
       try {
         const auth = await window.api.checkModelAuth()
         setAuthStatus(auth)
-      } catch { /* ignore */ }
+      } catch { /* backend not ready yet */ }
     }
-    checkAuth()
+    // Delay auth check slightly to let backend start
+    const authTimeout = setTimeout(checkAuth, 2000)
 
-    return () => clearInterval(interval)
+    return () => { clearInterval(interval); clearTimeout(authTimeout) }
   }, [])
 
   // Poll step progress while generating
@@ -437,69 +442,141 @@ export default function GeneratorView() {
 
       <div className="flex-1 flex flex-col gap-4 min-h-0">
 
+        {/* ---- Backend connection error ---- */}
+        {!backendConnected && (
+          <div className="bg-red-900/30 border border-red-800 rounded-lg p-4 shrink-0">
+            <h3 className="text-sm font-semibold text-red-300 flex items-center gap-2 mb-2">
+              <FiAlertTriangle size={14} /> Backend Not Connected
+            </h3>
+            <p className="text-sm text-red-300/80">
+              The Python backend is not responding. It may still be starting up, or it may have crashed.
+            </p>
+            <p className="text-xs text-red-400/60 mt-2">
+              If this persists, try restarting the app. Check that Python 3.10-3.12 is installed and the venv was set up correctly.
+            </p>
+          </div>
+        )}
+
         {/* ---- Model setup guidance ---- */}
-        {modelStatus && !modelStatus.loaded && !modelStatus.loading && (
+        {backendConnected && modelStatus && !modelStatus.loaded && !modelStatus.loading && (
           <div className="bg-surface-900 border border-surface-700 rounded-lg p-4 shrink-0 space-y-3">
             <h3 className="text-sm font-semibold text-orange-300 flex items-center gap-2">
               <FiAlertTriangle size={14} /> Model Setup
             </h3>
 
-            {/* Auth status */}
-            {authStatus && (
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-center gap-2">
-                  {authStatus.authenticated ? (
-                    <><FiCheckCircle className="text-green-400" size={13} />
-                      <span className="text-gray-300">Logged in as <span className="text-orange-300">{authStatus.username}</span></span></>
-                  ) : (
-                    <><FiAlertTriangle className="text-red-400" size={13} />
-                      <span className="text-red-300">Not logged in to HuggingFace</span></>
-                  )}
-                </div>
-                {authStatus.authenticated && (
-                  <div className="flex items-center gap-2">
-                    {authStatus.has_access ? (
-                      <><FiCheckCircle className="text-green-400" size={13} />
-                        <span className="text-gray-300">Model license accepted</span></>
-                    ) : (
-                      <><FiAlertTriangle className="text-red-400" size={13} />
-                        <span className="text-red-300">License not accepted</span></>
-                    )}
-                  </div>
+            {/* Setup checklist */}
+            <div className="space-y-1.5 text-sm">
+              {/* Step 1: HuggingFace Login */}
+              <div className="flex items-center gap-2">
+                {authStatus?.authenticated ? (
+                  <><FiCheckCircle className="text-green-400 shrink-0" size={13} />
+                    <span className="text-gray-300">Logged in as <span className="text-orange-300">{authStatus.username}</span></span></>
+                ) : authStatus ? (
+                  <><FiAlertTriangle className="text-red-400 shrink-0" size={13} />
+                    <span className="text-red-300">Not logged in to HuggingFace</span></>
+                ) : (
+                  <><span className="text-gray-500 shrink-0 w-[13px] h-[13px] inline-block rounded-full border border-gray-600" />
+                    <span className="text-gray-500">Checking HuggingFace login...</span></>
                 )}
-                <div className="flex items-center gap-2">
-                  {modelStatus.model_cached ? (
-                    <><FiCheckCircle className="text-green-400" size={13} />
-                      <span className="text-gray-300">Model downloaded (~5 GB cached)</span></>
-                  ) : (
-                    <><FiAlertTriangle className="text-yellow-400" size={13} />
-                      <span className="text-gray-300">Model not yet downloaded (will download on first generation, ~5 GB)</span></>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle className="text-green-400" size={13} />
-                  <span className="text-gray-300">Device: <span className="text-orange-300">{modelStatus.device.toUpperCase()}</span></span>
-                </div>
               </div>
-            )}
 
-            {/* Actionable guidance */}
+              {/* Step 2: Model License */}
+              <div className="flex items-center gap-2">
+                {authStatus?.authenticated && authStatus?.has_access ? (
+                  <><FiCheckCircle className="text-green-400 shrink-0" size={13} />
+                    <span className="text-gray-300">Model license accepted</span></>
+                ) : authStatus?.authenticated ? (
+                  <><FiAlertTriangle className="text-red-400 shrink-0" size={13} />
+                    <span className="text-red-300">Model license not accepted</span></>
+                ) : (
+                  <><span className="text-gray-500 shrink-0 w-[13px] h-[13px] inline-block rounded-full border border-gray-600" />
+                    <span className="text-gray-500">Model license</span></>
+                )}
+              </div>
+
+              {/* Step 3: Model Downloaded */}
+              <div className="flex items-center gap-2">
+                {modelStatus.model_cached ? (
+                  <><FiCheckCircle className="text-green-400 shrink-0" size={13} />
+                    <span className="text-gray-300">Model downloaded (~5 GB cached)</span></>
+                ) : (
+                  <><FiAlertTriangle className="text-yellow-400 shrink-0" size={13} />
+                    <span className="text-gray-300">Model not downloaded yet (~5 GB, downloads on first generation)</span></>
+                )}
+              </div>
+
+              {/* Device info */}
+              <div className="flex items-center gap-2">
+                <FiCheckCircle className="text-green-400 shrink-0" size={13} />
+                <span className="text-gray-300">Device: <span className="text-orange-300">{modelStatus.device.toUpperCase()}</span></span>
+              </div>
+            </div>
+
+            {/* Actionable instructions */}
             {authStatus && (!authStatus.authenticated || !authStatus.has_access) && (
-              <div className="bg-surface-800 rounded p-3 text-xs text-gray-400 space-y-1.5">
+              <div className="bg-surface-800 rounded-lg p-3 text-xs space-y-2">
+                <p className="text-gray-300 font-medium">To get started:</p>
                 {!authStatus.authenticated && (
-                  <p>1. Open a terminal and run: <code className="text-orange-300 bg-surface-900 px-1.5 py-0.5 rounded">huggingface-cli login</code></p>
+                  <>
+                    <div className="flex items-start gap-2 text-gray-400">
+                      <span className="text-orange-400 font-bold shrink-0">1.</span>
+                      <div>
+                        <p>Create a free account at{' '}
+                          <a href="https://huggingface.co/join" target="_blank" rel="noopener noreferrer"
+                            className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-0.5">
+                            huggingface.co <FiExternalLink size={9} />
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-400">
+                      <span className="text-orange-400 font-bold shrink-0">2.</span>
+                      <div>
+                        <p>Create an access token at{' '}
+                          <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer"
+                            className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-0.5">
+                            Settings &gt; Tokens <FiExternalLink size={9} />
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-400">
+                      <span className="text-orange-400 font-bold shrink-0">3.</span>
+                      <div>
+                        <p>Open a terminal and run:</p>
+                        <code className="block text-orange-300 bg-surface-900 px-2 py-1 rounded mt-1 select-all">
+                          huggingface-cli login
+                        </code>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-gray-400">
+                      <span className="text-orange-400 font-bold shrink-0">4.</span>
+                      <div>
+                        <p>Accept the model license at{' '}
+                          <a href="https://huggingface.co/stabilityai/stable-audio-open-1.0" target="_blank" rel="noopener noreferrer"
+                            className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-0.5">
+                            stable-audio-open-1.0 <FiExternalLink size={9} />
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  </>
                 )}
                 {authStatus.authenticated && !authStatus.has_access && (
-                  <p>
-                    {!authStatus.authenticated ? '2' : '1'}. Accept the model license:{' '}
-                    <a href="https://huggingface.co/stabilityai/stable-audio-open-1.0"
-                      target="_blank" rel="noopener noreferrer"
-                      className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-1">
-                      stable-audio-open-1.0 <FiExternalLink size={10} />
-                    </a>
-                  </p>
+                  <div className="flex items-start gap-2 text-gray-400">
+                    <span className="text-orange-400 font-bold shrink-0">1.</span>
+                    <div>
+                      <p>Accept the model license at{' '}
+                        <a href="https://huggingface.co/stabilityai/stable-audio-open-1.0" target="_blank" rel="noopener noreferrer"
+                          className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-0.5">
+                            stable-audio-open-1.0 <FiExternalLink size={9} />
+                        </a>{' '}
+                        and click "Agree and access repository"
+                      </p>
+                    </div>
+                  </div>
                 )}
-                <p className="text-gray-500">Then restart the app.</p>
+                <p className="text-gray-500 pt-1">Then restart the app to apply changes.</p>
               </div>
             )}
 
@@ -510,11 +587,13 @@ export default function GeneratorView() {
               </div>
             )}
 
-            {/* Ready to go */}
+            {/* All good - ready to generate */}
             {authStatus?.authenticated && authStatus?.has_access && !modelStatus.error && (
-              <p className="text-xs text-gray-400">
-                Ready to generate. The model will load into {modelStatus.device.toUpperCase()} memory on your first generation.
-              </p>
+              <div className="bg-green-900/20 border border-green-800/30 rounded p-2 text-xs text-green-300 flex items-center gap-2">
+                <FiCheckCircle size={13} />
+                Ready to generate! The model will load into {modelStatus.device.toUpperCase()} memory on your first generation.
+                {!modelStatus.model_cached && ' The first run will also download the model (~5 GB).'}
+              </div>
             )}
           </div>
         )}

@@ -1,7 +1,7 @@
-import { ChildProcess, spawn, execSync } from 'child_process'
+import { ChildProcess, spawn } from 'child_process'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { app, dialog, BrowserWindow } from 'electron'
+import { app, dialog, BrowserWindow, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 
 const PYTHON_PORT = 8765
@@ -15,31 +15,9 @@ export class PythonBridge {
     this.baseUrl = `http://${PYTHON_HOST}:${PYTHON_PORT}`
   }
 
-  /** Check if the Python venv is set up; if not, guide the user */
-  async ensureSetup(): Promise<boolean> {
-    const pythonPath = this.getPythonPath()
-    if (existsSync(pythonPath)) return true
-
-    const serverCwd = this.getServerCwd()
-    const reqFile = join(serverCwd, 'requirements.txt')
-
-    const { response } = await dialog.showMessageBox({
-      type: 'info',
-      title: 'Python Setup Required',
-      message: 'Stable Audio Studio needs a Python environment to run the AI model.\n\n' +
-        'This is a one-time setup that installs PyTorch and dependencies (~5 GB).\n\n' +
-        'Requirements:\n' +
-        '• Python 3.10–3.12 installed and on PATH\n' +
-        '• NVIDIA GPU with CUDA 12.1+ drivers (recommended)\n' +
-        '• HuggingFace account (for model download)',
-      buttons: ['Set Up Now', 'Cancel'],
-      defaultId: 0,
-    })
-
-    if (response !== 0) return false
-
-    // Create a progress window
-    const progressWin = new BrowserWindow({
+  /** Create a styled progress window for setup steps */
+  private createProgressWindow(): { win: BrowserWindow; update: (step: string, detail: string, pct: number) => void } {
+    const win = new BrowserWindow({
       width: 600,
       height: 360,
       resizable: false,
@@ -52,7 +30,7 @@ export class PythonBridge {
       webPreferences: { nodeIntegration: false, contextIsolation: true }
     })
 
-    const updateProgress = (step: string, detail: string, pct: number) => {
+    const update = (step: string, detail: string, pct: number) => {
       const html = `<!DOCTYPE html><html><head><style>
         body { font-family: 'Segoe UI', sans-serif; background: #1c1612; color: #f3f4f6;
                display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -70,8 +48,36 @@ export class PythonBridge {
         <div class="pct">${pct}%</div>
         <div class="hint">This is a one-time setup. Please don't close this window.</div>
       </body></html>`
-      progressWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+      win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
     }
+
+    return { win, update }
+  }
+
+  /** Check if the Python venv is set up; if not, guide the user */
+  async ensureSetup(): Promise<boolean> {
+    const pythonPath = this.getPythonPath()
+    if (existsSync(pythonPath)) return true
+
+    const serverCwd = this.getServerCwd()
+    const reqFile = join(serverCwd, 'requirements.txt')
+
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      title: 'Python Setup Required',
+      message: 'Stable Audio Studio needs a Python environment to run the AI model.\n\n' +
+        'This is a one-time setup that installs PyTorch and dependencies (~5 GB).\n\n' +
+        'Requirements:\n' +
+        '\u2022 Python 3.10\u20133.12 installed and on PATH\n' +
+        '\u2022 NVIDIA GPU with CUDA 12.1+ drivers (recommended)\n' +
+        '\u2022 Internet connection for downloading packages',
+      buttons: ['Set Up Now', 'Cancel'],
+      defaultId: 0,
+    })
+
+    if (response !== 0) return false
+
+    const { win: progressWin, update: updateProgress } = this.createProgressWindow()
 
     try {
       // Step 1: Create venv
@@ -83,7 +89,7 @@ export class PythonBridge {
       await this.runCommand(`"${pythonPath}" -m pip install --upgrade pip`, serverCwd)
 
       // Step 3: Install PyTorch (the big one)
-      updateProgress('Installing PyTorch + CUDA...', 'Downloading ~2.5 GB — this takes a few minutes', 15)
+      updateProgress('Installing PyTorch + CUDA...', 'Downloading ~2.5 GB. This takes a few minutes.', 15)
       await this.runCommand(
         `"${pythonPath}" -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`,
         serverCwd
@@ -95,31 +101,76 @@ export class PythonBridge {
 
       // Step 5: Check HuggingFace login
       updateProgress('Checking HuggingFace...', 'Verifying authentication for model access', 90)
+      let hfLoggedIn = false
       try {
-        await this.runCommand(`"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.whoami(); print('Authenticated')"`, serverCwd)
+        await this.runCommand(
+          `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.whoami(); print('OK')"`,
+          serverCwd
+        )
+        hfLoggedIn = true
       } catch {
-        // Not logged in - show guidance but don't fail setup
-        progressWin.close()
-        await dialog.showMessageBox({
-          type: 'warning',
-          title: 'HuggingFace Login Needed',
-          message: 'Python environment installed successfully!\n\n' +
-            'However, you still need to log in to HuggingFace to download the AI model.\n\n' +
-            'Steps:\n' +
-            '1. Open a terminal (Command Prompt or PowerShell)\n' +
-            '2. Run: ' + pythonPath.replace(/\\/g, '\\\\') + ' -m huggingface_hub.commands.huggingface_cli login\n' +
-            '3. Paste your HuggingFace access token\n' +
-            '4. Accept the license at: https://huggingface.co/stabilityai/stable-audio-open-1.0\n' +
-            '5. Restart Stable Audio Studio\n\n' +
-            'The Generator tab will show your setup status.',
-        })
-        return true
+        hfLoggedIn = false
       }
 
-      // Done
-      updateProgress('Setup complete!', 'Python environment is ready. The AI model (~5 GB) will download on first generation.', 100)
-      await new Promise((r) => setTimeout(r, 2000))
       progressWin.close()
+
+      if (!hfLoggedIn) {
+        // Guide user through HF login
+        const { response: loginChoice } = await dialog.showMessageBox({
+          type: 'info',
+          title: 'HuggingFace Login Required',
+          message: 'Python environment installed successfully!\n\n' +
+            'To download the AI model, you need a HuggingFace account.\n\n' +
+            'What to do:\n' +
+            '1. Create a free account at huggingface.co (if you don\'t have one)\n' +
+            '2. Create an access token at huggingface.co/settings/tokens\n' +
+            '3. Accept the model license (we\'ll open the page for you)\n\n' +
+            'The app will start, and the Generator tab will guide you through ' +
+            'the remaining steps with a setup checklist.',
+          buttons: ['Open HuggingFace (Browser)', 'Continue Without Login'],
+          defaultId: 0,
+        })
+
+        if (loginChoice === 0) {
+          shell.openExternal('https://huggingface.co/stabilityai/stable-audio-open-1.0')
+        }
+      } else {
+        // Check model license access
+        let hasAccess = false
+        try {
+          await this.runCommand(
+            `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.model_info('stabilityai/stable-audio-open-1.0'); print('OK')"`,
+            serverCwd
+          )
+          hasAccess = true
+        } catch {
+          hasAccess = false
+        }
+
+        if (!hasAccess) {
+          const { response: licenseChoice } = await dialog.showMessageBox({
+            type: 'info',
+            title: 'Model License Required',
+            message: 'You\'re logged in to HuggingFace, but you need to accept the model license.\n\n' +
+              'Click "Accept License" to open the model page in your browser, then click the ' +
+              '"Agree and access repository" button on that page.',
+            buttons: ['Accept License (Browser)', 'Continue'],
+            defaultId: 0,
+          })
+
+          if (licenseChoice === 0) {
+            shell.openExternal('https://huggingface.co/stabilityai/stable-audio-open-1.0')
+          }
+        } else {
+          await dialog.showMessageBox({
+            type: 'info',
+            title: 'Setup Complete',
+            message: 'Everything is ready!\n\n' +
+              'The AI model (~5 GB) will download on your first generation.\n' +
+              'This download only happens once.',
+          })
+        }
+      }
 
       return true
     } catch (err) {

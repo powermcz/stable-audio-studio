@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { PythonBridge } from './python-bridge'
 import { registerIpcHandlers } from './ipc-handlers'
+import { setupAutoUpdater } from './auto-updater'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
@@ -64,6 +65,11 @@ app.whenReady().then(async () => {
   registerIpcHandlers(ipcMain, pythonBridge)
 
   createWindow()
+
+  // Check for updates (production only)
+  if (mainWindow) {
+    setupAutoUpdater(mainWindow)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

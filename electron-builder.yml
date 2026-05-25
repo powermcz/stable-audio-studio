@@ -51,3 +51,8 @@ nsis:
   installerIcon: resources/icon.ico
   uninstallerIcon: resources/icon.ico
   artifactName: "${productName}-Setup-${version}.${ext}"
+
+publish:
+  provider: github
+  owner: powermcz
+  repo: stable-audio-studio
