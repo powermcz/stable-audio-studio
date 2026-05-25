@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron app
+        run: npx electron-vite build
+
+      - name: Package Windows installer
+        run: npx electron-builder --win --config electron-builder.yml
+
+      - name: Attest build artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'release/*.exe'
+
+      - name: Upload installer to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.exe.blockmap
+          draft: false
+          generate_release_notes: true
