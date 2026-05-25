@@ -1,7 +1,7 @@
 import { ChildProcess, spawn, execSync } from 'child_process'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { app, dialog } from 'electron'
+import { app, dialog, BrowserWindow } from 'electron'
 import { is } from '@electron-toolkit/utils'
 
 const PYTHON_PORT = 8765
@@ -20,7 +20,6 @@ export class PythonBridge {
     const pythonPath = this.getPythonPath()
     if (existsSync(pythonPath)) return true
 
-    // In production, the venv doesn't exist yet — user needs to set it up
     const serverCwd = this.getServerCwd()
     const reqFile = join(serverCwd, 'requirements.txt')
 
@@ -39,31 +38,72 @@ export class PythonBridge {
 
     if (response !== 0) return false
 
+    // Create a progress window
+    const progressWin = new BrowserWindow({
+      width: 600,
+      height: 360,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      closable: false,
+      frame: true,
+      title: 'Setting up Stable Audio Studio...',
+      webPreferences: { nodeIntegration: false, contextIsolation: true }
+    })
+
+    const updateProgress = (step: string, detail: string, pct: number) => {
+      const html = `<!DOCTYPE html><html><head><style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1c1612; color: #f3f4f6;
+               display: flex; flex-direction: column; justify-content: center; align-items: center;
+               height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
+        h2 { color: #f97316; margin: 0 0 8px; font-size: 18px; }
+        p { color: #9ca3af; margin: 0 0 24px; font-size: 13px; text-align: center; max-width: 500px; }
+        .bar-bg { width: 100%; max-width: 480px; height: 8px; background: #292018; border-radius: 4px; overflow: hidden; }
+        .bar { height: 100%; background: #f97316; border-radius: 4px; transition: width 0.5s; width: ${pct}%; }
+        .pct { color: #f97316; font-size: 14px; margin-top: 12px; font-weight: 600; }
+        .hint { color: #6b7280; font-size: 11px; margin-top: 20px; }
+      </style></head><body>
+        <h2>${step}</h2>
+        <p>${detail}</p>
+        <div class="bar-bg"><div class="bar"></div></div>
+        <div class="pct">${pct}%</div>
+        <div class="hint">This is a one-time setup. Please don't close this window.</div>
+      </body></html>`
+      progressWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+    }
+
     try {
-      // Create venv
-      console.log('Creating Python venv...')
-      execSync('python -m venv venv', { cwd: serverCwd, stdio: 'inherit', timeout: 120_000 })
+      // Step 1: Create venv
+      updateProgress('Creating Python environment...', 'Setting up virtual environment', 5)
+      await this.runCommand('python -m venv venv', serverCwd)
 
-      // Install PyTorch with CUDA
-      const pip = this.getPythonPath().replace('python.exe', 'pip.exe')
-      console.log('Installing PyTorch with CUDA...')
-      execSync(`"${pip}" install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`, {
-        cwd: serverCwd, stdio: 'inherit', timeout: 600_000
-      })
+      // Step 2: Upgrade pip
+      const pip = pythonPath.replace('python.exe', 'pip.exe')
+      // Re-check because venv was just created
+      const actualPip = existsSync(pip) ? pip : join(serverCwd, 'venv', 'Scripts', 'pip.exe')
 
-      // Install requirements
-      console.log('Installing dependencies...')
-      execSync(`"${pip}" install -r "${reqFile}"`, {
-        cwd: serverCwd, stdio: 'inherit', timeout: 600_000
-      })
+      updateProgress('Upgrading pip...', 'Preparing package manager', 10)
+      await this.runCommand(`"${actualPip}" install --upgrade pip`, serverCwd)
 
-      await dialog.showMessageBox({
-        type: 'info',
-        title: 'Setup Complete',
-        message: 'Python environment is ready!\n\nThe AI model (~5 GB) will download on first generation.',
-      })
+      // Step 3: Install PyTorch (the big one)
+      updateProgress('Installing PyTorch + CUDA...', 'Downloading ~2.5 GB — this takes a few minutes', 15)
+      await this.runCommand(
+        `"${actualPip}" install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`,
+        serverCwd
+      )
+
+      // Step 4: Install remaining deps
+      updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
+      await this.runCommand(`"${actualPip}" install -r "${reqFile}"`, serverCwd)
+
+      // Done
+      updateProgress('Setup complete!', 'Python environment is ready. The AI model (~5 GB) will download on first generation.', 100)
+      await new Promise((r) => setTimeout(r, 2000))
+      progressWin.close()
+
       return true
     } catch (err) {
+      progressWin.close()
       await dialog.showMessageBox({
         type: 'error',
         title: 'Setup Failed',
@@ -71,6 +111,29 @@ export class PythonBridge {
       })
       return false
     }
+  }
+
+  /** Run a shell command asynchronously (non-blocking, no blank console window) */
+  private runCommand(cmd: string, cwd: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const child = spawn(cmd, {
+        cwd,
+        shell: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true  // prevents blank console window
+      })
+
+      let stderr = ''
+      child.stderr?.on('data', (d) => { stderr += d.toString() })
+      child.stdout?.on('data', (d) => { console.log(`[Setup] ${d.toString().trim()}`) })
+
+      child.on('close', (code) => {
+        if (code === 0) resolve()
+        else reject(new Error(`Command failed (exit ${code}): ${cmd}\n${stderr.slice(-500)}`))
+      })
+
+      child.on('error', (err) => reject(err))
+    })
   }
 
   async start(): Promise<void> {
