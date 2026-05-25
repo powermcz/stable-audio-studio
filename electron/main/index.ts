@@ -7,6 +7,7 @@ import { setupAutoUpdater } from './auto-updater'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
+let isSettingUp = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -53,7 +54,10 @@ app.whenReady().then(async () => {
   pythonBridge = new PythonBridge()
 
   // In production, check if Python venv exists and offer setup if not
+  isSettingUp = true
   const ready = await pythonBridge.ensureSetup()
+  isSettingUp = false
+
   if (!ready) {
     app.quit()
     return
@@ -79,6 +83,9 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', async () => {
+  // Don't quit during setup (progress window closing triggers this)
+  if (isSettingUp) return
+
   if (pythonBridge) {
     await pythonBridge.stop()
   }

@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from 'child_process'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { app, dialog, BrowserWindow, shell } from 'electron'
+import { app, dialog, BrowserWindow } from 'electron'
 import { is } from '@electron-toolkit/utils'
 
 const PYTHON_PORT = 8765
@@ -143,80 +143,18 @@ export class PythonBridge {
       updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
       await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
-      // Step 5: Check HuggingFace login (with timeout - don't hang)
-      updateProgress('Checking HuggingFace...', 'Verifying authentication (this may take a moment)', 90)
-      let hfLoggedIn = false
-      try {
-        await this.runCommand(
-          `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.whoami(); print('OK')"`,
-          serverCwd,
-          30000  // 30s timeout
-        )
-        hfLoggedIn = true
-      } catch {
-        hfLoggedIn = false
-      }
-
+      // Done - close progress and show completion
+      updateProgress('Setup complete!', 'Python environment is ready.', 100)
+      await new Promise((r) => setTimeout(r, 1500))
       progressWin.close()
 
-      if (!hfLoggedIn) {
-        // Guide user through HF login
-        const { response: loginChoice } = await dialog.showMessageBox({
-          type: 'info',
-          title: 'HuggingFace Login Required',
-          message: 'Python environment installed successfully!\n\n' +
-            'To download the AI model, you need a HuggingFace account.\n\n' +
-            'What to do:\n' +
-            '1. Create a free account at huggingface.co (if you don\'t have one)\n' +
-            '2. Create an access token at huggingface.co/settings/tokens\n' +
-            '3. Accept the model license (we\'ll open the page for you)\n\n' +
-            'The app will start, and the Generator tab will guide you through ' +
-            'the remaining steps with a setup checklist.',
-          buttons: ['Open HuggingFace (Browser)', 'Continue Without Login'],
-          defaultId: 0,
-        })
-
-        if (loginChoice === 0) {
-          shell.openExternal('https://huggingface.co/stabilityai/stable-audio-open-1.0')
-        }
-      } else {
-        // Check model license access
-        let hasAccess = false
-        try {
-          await this.runCommand(
-            `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.model_info('stabilityai/stable-audio-open-1.0'); print('OK')"`,
-            serverCwd,
-            30000  // 30s timeout
-          )
-          hasAccess = true
-        } catch {
-          hasAccess = false
-        }
-
-        if (!hasAccess) {
-          const { response: licenseChoice } = await dialog.showMessageBox({
-            type: 'info',
-            title: 'Model License Required',
-            message: 'You\'re logged in to HuggingFace, but you need to accept the model license.\n\n' +
-              'Click "Accept License" to open the model page in your browser, then click the ' +
-              '"Agree and access repository" button on that page.',
-            buttons: ['Accept License (Browser)', 'Continue'],
-            defaultId: 0,
-          })
-
-          if (licenseChoice === 0) {
-            shell.openExternal('https://huggingface.co/stabilityai/stable-audio-open-1.0')
-          }
-        } else {
-          await dialog.showMessageBox({
-            type: 'info',
-            title: 'Setup Complete',
-            message: 'Everything is ready!\n\n' +
-              'The AI model (~5 GB) will download on your first generation.\n' +
-              'This download only happens once.',
-          })
-        }
-      }
+      await dialog.showMessageBox({
+        type: 'info',
+        title: 'Setup Complete',
+        message: 'Python environment installed successfully!\n\n' +
+          'The app will now start. The Generator tab will guide you through\n' +
+          'connecting your HuggingFace account and downloading the AI model.',
+      })
 
       return true
     } catch (err) {
