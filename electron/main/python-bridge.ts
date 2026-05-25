@@ -93,6 +93,29 @@ export class PythonBridge {
       updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
       await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
+      // Step 5: Check HuggingFace login
+      updateProgress('Checking HuggingFace...', 'Verifying authentication for model access', 90)
+      try {
+        await this.runCommand(`"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.whoami(); print('Authenticated')"`, serverCwd)
+      } catch {
+        // Not logged in - show guidance but don't fail setup
+        progressWin.close()
+        await dialog.showMessageBox({
+          type: 'warning',
+          title: 'HuggingFace Login Needed',
+          message: 'Python environment installed successfully!\n\n' +
+            'However, you still need to log in to HuggingFace to download the AI model.\n\n' +
+            'Steps:\n' +
+            '1. Open a terminal (Command Prompt or PowerShell)\n' +
+            '2. Run: ' + pythonPath.replace(/\\/g, '\\\\') + ' -m huggingface_hub.commands.huggingface_cli login\n' +
+            '3. Paste your HuggingFace access token\n' +
+            '4. Accept the license at: https://huggingface.co/stabilityai/stable-audio-open-1.0\n' +
+            '5. Restart Stable Audio Studio\n\n' +
+            'The Generator tab will show your setup status.',
+        })
+        return true
+      }
+
       // Done
       updateProgress('Setup complete!', 'Python environment is ready. The AI model (~5 GB) will download on first generation.', 100)
       await new Promise((r) => setTimeout(r, 2000))
@@ -104,7 +127,7 @@ export class PythonBridge {
       await dialog.showMessageBox({
         type: 'error',
         title: 'Setup Failed',
-        message: `Python setup failed:\n\n${err}\n\nPlease set up manually — see the README for instructions.`,
+        message: `Python setup failed:\n\n${err}\n\nPlease set up manually. See the README for instructions.`,
       })
       return false
     }

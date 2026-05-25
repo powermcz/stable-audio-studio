@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   FiPlay, FiDownload, FiRefreshCw, FiSliders,
-  FiTrash2, FiX, FiZap
+  FiTrash2, FiX, FiZap, FiAlertTriangle, FiCheckCircle, FiExternalLink
 } from 'react-icons/fi'
 import WaveformPlayer from '../shared/WaveformPlayer'
 import ExportDialog from '../shared/ExportDialog'
@@ -219,7 +219,13 @@ export default function GeneratorView() {
   const [isGenerating, setIsGenerating] = useState(_isGenerating)
   const [stepProgress, setStepProgress] = useState({ step: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
-  const [modelStatus, setModelStatus] = useState<{ loaded: boolean; loading: boolean; device: string } | null>(null)
+  const [modelStatus, setModelStatus] = useState<{
+    loaded: boolean; loading: boolean; device: string;
+    error: string | null; model_cached: boolean
+  } | null>(null)
+  const [authStatus, setAuthStatus] = useState<{
+    authenticated: boolean; has_access: boolean; username: string | null; error: string | null
+  } | null>(null)
 
   // --- UI toggles ---
   const [showPresets, setShowPresets] = useState(false)
@@ -227,16 +233,29 @@ export default function GeneratorView() {
 
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Check model status on mount and while generating
+  // Check model status and auth on mount
   useEffect(() => {
     const check = async () => {
       try {
         const s = await window.api.getGenerationProgress()
-        setModelStatus({ loaded: s.loaded, loading: s.loading, device: s.device })
+        setModelStatus({
+          loaded: s.loaded, loading: s.loading, device: s.device,
+          error: s.error || null, model_cached: s.model_cached ?? false
+        })
       } catch { /* ignore */ }
     }
     check()
     const interval = setInterval(check, 3000)
+
+    // Check auth once on mount
+    const checkAuth = async () => {
+      try {
+        const auth = await window.api.checkModelAuth()
+        setAuthStatus(auth)
+      } catch { /* ignore */ }
+    }
+    checkAuth()
+
     return () => clearInterval(interval)
   }, [])
 
@@ -418,13 +437,85 @@ export default function GeneratorView() {
 
       <div className="flex-1 flex flex-col gap-4 min-h-0">
 
-        {/* ---- Model status banner ---- */}
+        {/* ---- Model setup guidance ---- */}
         {modelStatus && !modelStatus.loaded && !modelStatus.loading && (
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-2 shrink-0">
-            <p className="text-sm text-orange-300">
-              Model not loaded — will load on first generation
-              <span className="text-orange-400/50 ml-2">({modelStatus.device})</span>
-            </p>
+          <div className="bg-surface-900 border border-surface-700 rounded-lg p-4 shrink-0 space-y-3">
+            <h3 className="text-sm font-semibold text-orange-300 flex items-center gap-2">
+              <FiAlertTriangle size={14} /> Model Setup
+            </h3>
+
+            {/* Auth status */}
+            {authStatus && (
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  {authStatus.authenticated ? (
+                    <><FiCheckCircle className="text-green-400" size={13} />
+                      <span className="text-gray-300">Logged in as <span className="text-orange-300">{authStatus.username}</span></span></>
+                  ) : (
+                    <><FiAlertTriangle className="text-red-400" size={13} />
+                      <span className="text-red-300">Not logged in to HuggingFace</span></>
+                  )}
+                </div>
+                {authStatus.authenticated && (
+                  <div className="flex items-center gap-2">
+                    {authStatus.has_access ? (
+                      <><FiCheckCircle className="text-green-400" size={13} />
+                        <span className="text-gray-300">Model license accepted</span></>
+                    ) : (
+                      <><FiAlertTriangle className="text-red-400" size={13} />
+                        <span className="text-red-300">License not accepted</span></>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  {modelStatus.model_cached ? (
+                    <><FiCheckCircle className="text-green-400" size={13} />
+                      <span className="text-gray-300">Model downloaded (~5 GB cached)</span></>
+                  ) : (
+                    <><FiAlertTriangle className="text-yellow-400" size={13} />
+                      <span className="text-gray-300">Model not yet downloaded (will download on first generation, ~5 GB)</span></>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiCheckCircle className="text-green-400" size={13} />
+                  <span className="text-gray-300">Device: <span className="text-orange-300">{modelStatus.device.toUpperCase()}</span></span>
+                </div>
+              </div>
+            )}
+
+            {/* Actionable guidance */}
+            {authStatus && (!authStatus.authenticated || !authStatus.has_access) && (
+              <div className="bg-surface-800 rounded p-3 text-xs text-gray-400 space-y-1.5">
+                {!authStatus.authenticated && (
+                  <p>1. Open a terminal and run: <code className="text-orange-300 bg-surface-900 px-1.5 py-0.5 rounded">huggingface-cli login</code></p>
+                )}
+                {authStatus.authenticated && !authStatus.has_access && (
+                  <p>
+                    {!authStatus.authenticated ? '2' : '1'}. Accept the model license:{' '}
+                    <a href="https://huggingface.co/stabilityai/stable-audio-open-1.0"
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-orange-400 hover:text-orange-300 underline inline-flex items-center gap-1">
+                      stable-audio-open-1.0 <FiExternalLink size={10} />
+                    </a>
+                  </p>
+                )}
+                <p className="text-gray-500">Then restart the app.</p>
+              </div>
+            )}
+
+            {/* Model error */}
+            {modelStatus.error && (
+              <div className="bg-red-900/20 border border-red-800/50 rounded p-2 text-xs text-red-300">
+                {modelStatus.error}
+              </div>
+            )}
+
+            {/* Ready to go */}
+            {authStatus?.authenticated && authStatus?.has_access && !modelStatus.error && (
+              <p className="text-xs text-gray-400">
+                Ready to generate. The model will load into {modelStatus.device.toUpperCase()} memory on your first generation.
+              </p>
+            )}
           </div>
         )}
 
@@ -521,7 +612,20 @@ export default function GeneratorView() {
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-800 rounded-lg p-3 text-red-300 text-sm shrink-0">{error}</div>
+          <div className="bg-red-900/30 border border-red-800 rounded-lg p-3 shrink-0">
+            <p className="text-red-300 text-sm">{error}</p>
+            {error.toLowerCase().includes('login') && (
+              <p className="text-red-400/70 text-xs mt-1">Run <code className="bg-red-900/30 px-1 rounded">huggingface-cli login</code> in a terminal, then restart the app.</p>
+            )}
+            {error.toLowerCase().includes('license') && (
+              <p className="text-red-400/70 text-xs mt-1">
+                Visit <a href="https://huggingface.co/stabilityai/stable-audio-open-1.0" target="_blank" rel="noopener noreferrer" className="underline">the model page</a> to accept the license.
+              </p>
+            )}
+            {error.toLowerCase().includes('memory') && (
+              <p className="text-red-400/70 text-xs mt-1">Close other GPU apps or switch to CPU mode in Settings.</p>
+            )}
+          </div>
         )}
 
         {/* Progress / Queue status */}

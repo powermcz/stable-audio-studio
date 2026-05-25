@@ -129,6 +129,10 @@ export function registerIpcHandlers(ipcMain: IpcMain, pythonBridge: PythonBridge
     return pythonBridge.request('POST', '/api/model/load')
   })
 
+  ipcMain.handle('check-model-auth', async () => {
+    return pythonBridge.request('GET', '/api/model/auth')
+  })
+
   // --- Library ---
   ipcMain.handle('library-save', async (_event, params: {
     title: string

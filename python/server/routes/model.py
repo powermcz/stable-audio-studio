@@ -23,3 +23,10 @@ async def load_model(request: Request):
         return service.get_status()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+
+
+@router.get("/model/auth")
+async def check_auth(request: Request):
+    """Check HuggingFace authentication and model access."""
+    service = request.app.state.model_service
+    return service.check_hf_auth()

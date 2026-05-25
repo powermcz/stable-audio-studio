@@ -39,6 +39,8 @@ const api = {
     ipcRenderer.invoke('get-model-status'),
   loadModel: () =>
     ipcRenderer.invoke('load-model'),
+  checkModelAuth: () =>
+    ipcRenderer.invoke('check-model-auth'),
 
   // Library
   librarySave: (params: {
@@ -86,6 +88,8 @@ const api = {
       loading: boolean
       device: string
       model_name: string
+      error: string | null
+      model_cached: boolean
       generating: boolean
       generation_progress: number
       generation_total: number
