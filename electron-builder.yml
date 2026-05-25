@@ -51,6 +51,7 @@ nsis:
   installerIcon: resources/icon.ico
   uninstallerIcon: resources/icon.ico
   artifactName: "${productName}-Setup-${version}.${ext}"
+  include: resources/nsis/uninstaller.nsh
 
 publish:
   provider: github

@@ -507,8 +507,13 @@ export default function GeneratorView() {
 
               {/* Device info */}
               <div className="flex items-center gap-2">
-                <FiCheckCircle className="text-green-400 shrink-0" size={13} />
-                <span className="text-gray-300">Device: <span className="text-orange-300">{modelStatus.device.toUpperCase()}</span></span>
+                {modelStatus.device === 'unknown' ? (
+                  <><span className="text-gray-500 shrink-0 w-[13px] h-[13px] inline-block rounded-full border border-gray-600" />
+                    <span className="text-gray-500">Device: waiting for backend...</span></>
+                ) : (
+                  <><FiCheckCircle className="text-green-400 shrink-0" size={13} />
+                    <span className="text-gray-300">Device: <span className="text-orange-300">{modelStatus.device.toUpperCase()}</span></span></>
+                )}
               </div>
             </div>
 

@@ -57,26 +57,70 @@ export class PythonBridge {
   /** Check if the Python venv is set up; if not, guide the user */
   async ensureSetup(): Promise<boolean> {
     const pythonPath = this.getPythonPath()
-    if (existsSync(pythonPath)) return true
-
     const serverCwd = this.getServerCwd()
+
+    // Verify venv actually works, not just that the file exists
+    if (existsSync(pythonPath)) {
+      try {
+        await this.runCommand(`"${pythonPath}" -c "import fastapi; print('OK')"`, serverCwd, 15000)
+        return true  // venv exists and works
+      } catch {
+        // Venv exists but is broken/incomplete - offer to recreate
+        console.log('Existing venv is broken, will recreate')
+        const { response } = await dialog.showMessageBox({
+          type: 'warning',
+          title: 'Python Environment Needs Repair',
+          message: 'The Python environment exists but appears to be incomplete or corrupted.\n\n' +
+            'This can happen after an app update or reinstall.\n\n' +
+            'Would you like to repair it now?',
+          buttons: ['Repair Now', 'Quit'],
+          defaultId: 0,
+        })
+        if (response !== 0) return false
+
+        // Delete broken venv
+        try {
+          const { rmSync } = await import('fs')
+          rmSync(join(serverCwd, 'venv'), { recursive: true, force: true })
+        } catch {
+          // If we can't delete it, continue anyway - venv creation might overwrite
+        }
+      }
+    } else {
+      const reqFile = join(serverCwd, 'requirements.txt')
+      if (!existsSync(reqFile)) {
+        // No requirements.txt means the server files aren't here
+        await dialog.showMessageBox({
+          type: 'error',
+          title: 'Missing Files',
+          message: 'Server files are missing from the installation.\n\nPlease reinstall the application.',
+        })
+        return false
+      }
+
+      const { response } = await dialog.showMessageBox({
+        type: 'info',
+        title: 'Python Setup Required',
+        message: 'Stable Audio Studio needs a Python environment to run the AI model.\n\n' +
+          'This is a one-time setup that installs PyTorch and dependencies (~5 GB).\n\n' +
+          'Requirements:\n' +
+          '\u2022 Python 3.10\u20133.12 installed and on PATH\n' +
+          '\u2022 NVIDIA GPU with CUDA 12.1+ drivers (recommended)\n' +
+          '\u2022 Internet connection for downloading packages',
+        buttons: ['Set Up Now', 'Cancel'],
+        defaultId: 0,
+      })
+
+      if (response !== 0) return false
+    }
+
+    // Run the full setup
+    return this.runFullSetup(pythonPath, serverCwd)
+  }
+
+  /** Run the full Python environment setup */
+  private async runFullSetup(pythonPath: string, serverCwd: string): Promise<boolean> {
     const reqFile = join(serverCwd, 'requirements.txt')
-
-    const { response } = await dialog.showMessageBox({
-      type: 'info',
-      title: 'Python Setup Required',
-      message: 'Stable Audio Studio needs a Python environment to run the AI model.\n\n' +
-        'This is a one-time setup that installs PyTorch and dependencies (~5 GB).\n\n' +
-        'Requirements:\n' +
-        '\u2022 Python 3.10\u20133.12 installed and on PATH\n' +
-        '\u2022 NVIDIA GPU with CUDA 12.1+ drivers (recommended)\n' +
-        '\u2022 Internet connection for downloading packages',
-      buttons: ['Set Up Now', 'Cancel'],
-      defaultId: 0,
-    })
-
-    if (response !== 0) return false
-
     const { win: progressWin, update: updateProgress } = this.createProgressWindow()
 
     try {
@@ -99,13 +143,14 @@ export class PythonBridge {
       updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
       await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
-      // Step 5: Check HuggingFace login
-      updateProgress('Checking HuggingFace...', 'Verifying authentication for model access', 90)
+      // Step 5: Check HuggingFace login (with timeout - don't hang)
+      updateProgress('Checking HuggingFace...', 'Verifying authentication (this may take a moment)', 90)
       let hfLoggedIn = false
       try {
         await this.runCommand(
           `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.whoami(); print('OK')"`,
-          serverCwd
+          serverCwd,
+          30000  // 30s timeout
         )
         hfLoggedIn = true
       } catch {
@@ -140,7 +185,8 @@ export class PythonBridge {
         try {
           await this.runCommand(
             `"${pythonPath}" -c "from huggingface_hub import HfApi; api = HfApi(); api.model_info('stabilityai/stable-audio-open-1.0'); print('OK')"`,
-            serverCwd
+            serverCwd,
+            30000  // 30s timeout
           )
           hasAccess = true
         } catch {
@@ -184,8 +230,8 @@ export class PythonBridge {
     }
   }
 
-  /** Run a shell command asynchronously (non-blocking, no blank console window) */
-  private runCommand(cmd: string, cwd: string): Promise<void> {
+  /** Run a shell command asynchronously with optional timeout */
+  private runCommand(cmd: string, cwd: string, timeoutMs?: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, {
         cwd,
@@ -195,15 +241,32 @@ export class PythonBridge {
       })
 
       let stderr = ''
+      let resolved = false
       child.stderr?.on('data', (d) => { stderr += d.toString() })
       child.stdout?.on('data', (d) => { console.log(`[Setup] ${d.toString().trim()}`) })
 
+      const finish = (ok: boolean, err?: Error) => {
+        if (resolved) return
+        resolved = true
+        if (timer) clearTimeout(timer)
+        ok ? resolve() : reject(err)
+      }
+
       child.on('close', (code) => {
-        if (code === 0) resolve()
-        else reject(new Error(`Command failed (exit ${code}): ${cmd}\n${stderr.slice(-500)}`))
+        if (code === 0) finish(true)
+        else finish(false, new Error(`Command failed (exit ${code}): ${cmd}\n${stderr.slice(-500)}`))
       })
 
-      child.on('error', (err) => reject(err))
+      child.on('error', (err) => finish(false, err))
+
+      // Optional timeout to prevent hanging
+      let timer: ReturnType<typeof setTimeout> | null = null
+      if (timeoutMs) {
+        timer = setTimeout(() => {
+          child.kill()
+          finish(false, new Error(`Command timed out after ${timeoutMs / 1000}s: ${cmd}`))
+        }, timeoutMs)
+      }
     })
   }
 

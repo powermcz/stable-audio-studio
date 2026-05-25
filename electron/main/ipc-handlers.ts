@@ -284,6 +284,7 @@ export function registerIpcHandlers(ipcMain: IpcMain, pythonBridge: PythonBridge
     } catch {
       return {
         loaded: false, loading: false, device: 'unknown', model_name: '',
+        error: null, model_cached: false,
         generating: false, generation_progress: 0, generation_total: 0
       }
     }
