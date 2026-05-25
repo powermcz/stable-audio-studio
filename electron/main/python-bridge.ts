@@ -16,19 +16,27 @@ export class PythonBridge {
   }
 
   /** Create a styled progress window for setup steps */
-  private createProgressWindow(): { win: BrowserWindow; update: (step: string, detail: string, pct: number) => void } {
+  private createProgressWindow(): {
+    win: BrowserWindow;
+    update: (step: string, detail: string, pct: number) => void;
+    close: () => void
+  } {
     const win = new BrowserWindow({
       width: 600,
-      height: 360,
+      height: 340,
       resizable: false,
       minimizable: false,
       maximizable: false,
-      closable: false,
+      closable: true,
       frame: true,
       autoHideMenuBar: true,
       title: 'Setting up Stable Audio Studio...',
       webPreferences: { nodeIntegration: false, contextIsolation: true }
     })
+
+    // Block user X button during setup, but allow programmatic close
+    let allowClose = false
+    win.on('close', (e) => { if (!allowClose) e.preventDefault() })
 
     const update = (step: string, detail: string, pct: number) => {
       const html = `<!DOCTYPE html><html><head><style>
@@ -51,7 +59,12 @@ export class PythonBridge {
       win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
     }
 
-    return { win, update }
+    const close = () => {
+      allowClose = true
+      win.destroy()
+    }
+
+    return { win, update, close }
   }
 
   /** Check if the Python venv is set up; if not, guide the user */
@@ -121,7 +134,7 @@ export class PythonBridge {
   /** Run the full Python environment setup */
   private async runFullSetup(pythonPath: string, serverCwd: string): Promise<boolean> {
     const reqFile = join(serverCwd, 'requirements.txt')
-    const { win: progressWin, update: updateProgress } = this.createProgressWindow()
+    const { close: closeProgress, update: updateProgress } = this.createProgressWindow()
 
     try {
       // Step 1: Create venv
@@ -144,10 +157,10 @@ export class PythonBridge {
       await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
       // Done
-      progressWin.destroy()
+      closeProgress()
       return true
     } catch (err) {
-      progressWin.destroy()
+      closeProgress()
       await dialog.showMessageBox({
         type: 'error',
         title: 'Setup Failed',
