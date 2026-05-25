@@ -47,6 +47,7 @@ export class PythonBridge {
       maximizable: false,
       closable: false,
       frame: true,
+      autoHideMenuBar: true,
       title: 'Setting up Stable Audio Studio...',
       webPreferences: { nodeIntegration: false, contextIsolation: true }
     })
@@ -77,24 +78,20 @@ export class PythonBridge {
       updateProgress('Creating Python environment...', 'Setting up virtual environment', 5)
       await this.runCommand('python -m venv venv', serverCwd)
 
-      // Step 2: Upgrade pip
-      const pip = pythonPath.replace('python.exe', 'pip.exe')
-      // Re-check because venv was just created
-      const actualPip = existsSync(pip) ? pip : join(serverCwd, 'venv', 'Scripts', 'pip.exe')
-
+      // Step 2: Upgrade pip (use python -m pip so pip.exe isn't locked)
       updateProgress('Upgrading pip...', 'Preparing package manager', 10)
-      await this.runCommand(`"${actualPip}" install --upgrade pip`, serverCwd)
+      await this.runCommand(`"${pythonPath}" -m pip install --upgrade pip`, serverCwd)
 
       // Step 3: Install PyTorch (the big one)
       updateProgress('Installing PyTorch + CUDA...', 'Downloading ~2.5 GB — this takes a few minutes', 15)
       await this.runCommand(
-        `"${actualPip}" install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`,
+        `"${pythonPath}" -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`,
         serverCwd
       )
 
       // Step 4: Install remaining deps
       updateProgress('Installing dependencies...', 'diffusers, transformers, FastAPI, soundfile, librosa...', 75)
-      await this.runCommand(`"${actualPip}" install -r "${reqFile}"`, serverCwd)
+      await this.runCommand(`"${pythonPath}" -m pip install -r "${reqFile}"`, serverCwd)
 
       // Done
       updateProgress('Setup complete!', 'Python environment is ready. The AI model (~5 GB) will download on first generation.', 100)
