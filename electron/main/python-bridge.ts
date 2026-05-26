@@ -213,11 +213,33 @@ export class PythonBridge {
   async start(): Promise<void> {
     const pythonPath = this.getPythonPath()
     const serverCwd = this.getServerCwd()
+    const serverExists = existsSync(join(serverCwd, 'server'))
+    const mainPyExists = existsSync(join(serverCwd, 'server', 'main.py'))
 
-    console.log(`Starting Python backend: ${pythonPath} -m uvicorn`)
-    console.log(`  CWD: ${serverCwd}`)
-    console.log(`  Python exists: ${existsSync(pythonPath)}`)
-    console.log(`  Server dir exists: ${existsSync(join(serverCwd, 'server'))}`)
+    const diagnostics = [
+      `Python: ${pythonPath}`,
+      `Python exists: ${existsSync(pythonPath)}`,
+      `Server CWD: ${serverCwd}`,
+      `server/ dir exists: ${serverExists}`,
+      `server/main.py exists: ${mainPyExists}`,
+    ]
+    diagnostics.forEach((d) => console.log(`[Start] ${d}`))
+
+    // Pre-flight check: verify python can import the server module
+    try {
+      await this.runCommand(
+        `"${pythonPath}" -c "import uvicorn; from server.main import app; print('Pre-flight OK')"`,
+        serverCwd,
+        30000
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      throw new Error(
+        `Pre-flight check failed. The Python environment cannot load the server.\n\n` +
+        `${msg}\n\n` +
+        diagnostics.join('\n')
+      )
+    }
 
     // Track if the process crashes during startup
     let startupError: string | null = null
