@@ -1,6 +1,6 @@
 {
   "name": "stable-audio-studio",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Desktop audio studio powered by Stable Audio Open 1.0",
   "main": "out/main/index.js",
   "author": "powermcz",

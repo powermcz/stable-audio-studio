@@ -225,17 +225,17 @@ export class PythonBridge {
     ]
     diagnostics.forEach((d) => console.log(`[Start] ${d}`))
 
-    // Pre-flight check: verify python can import the server module
+    // Quick pre-flight: just check uvicorn is importable (don't import torch/server)
     try {
       await this.runCommand(
-        `"${pythonPath}" -c "import uvicorn; from server.main import app; print('Pre-flight OK')"`,
+        `"${pythonPath}" -c "import uvicorn; import fastapi; print('OK')"`,
         serverCwd,
-        30000
+        15000
       )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       throw new Error(
-        `Pre-flight check failed. The Python environment cannot load the server.\n\n` +
+        `Pre-flight check failed. The Python environment is missing dependencies.\n\n` +
         `${msg}\n\n` +
         diagnostics.join('\n')
       )
@@ -360,7 +360,7 @@ export class PythonBridge {
   private async waitForReady(
     hasCrashed: () => boolean = () => false,
     getError: () => string = () => '',
-    timeout = 60000
+    timeout = 180000  // 3 minutes — PyTorch first import can take 60s+
   ): Promise<void> {
     const start = Date.now()
     while (Date.now() - start < timeout) {
@@ -377,8 +377,9 @@ export class PythonBridge {
       }
     }
     throw new Error(
-      'Python backend did not start within 60 seconds.\n' +
-      'This usually means a dependency is missing or the venv is corrupted.\n' +
+      'Python backend did not respond within 3 minutes.\n' +
+      'PyTorch may be loading for the first time (this is normal on first launch).\n' +
+      'Try launching the app again.\n\n' +
       `Last output:\n${getError()}`
     )
   }
