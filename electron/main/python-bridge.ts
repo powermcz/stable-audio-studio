@@ -212,9 +212,16 @@ export class PythonBridge {
 
   async start(): Promise<void> {
     const pythonPath = this.getPythonPath()
-    const serverScript = this.getServerScript()
+    const serverCwd = this.getServerCwd()
 
-    console.log(`Starting Python backend: ${pythonPath} -m uvicorn server.main:app --host ${PYTHON_HOST} --port ${PYTHON_PORT}`)
+    console.log(`Starting Python backend: ${pythonPath} -m uvicorn`)
+    console.log(`  CWD: ${serverCwd}`)
+    console.log(`  Python exists: ${existsSync(pythonPath)}`)
+    console.log(`  Server dir exists: ${existsSync(join(serverCwd, 'server'))}`)
+
+    // Track if the process crashes during startup
+    let startupError: string | null = null
+    let processExited = false
 
     this.process = spawn(pythonPath, [
       '-m', 'uvicorn',
@@ -222,30 +229,40 @@ export class PythonBridge {
       '--host', PYTHON_HOST,
       '--port', String(PYTHON_PORT)
     ], {
-      cwd: this.getServerCwd(),
+      cwd: serverCwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env }
+      env: { ...process.env },
+      windowsHide: true
     })
 
+    let stderrLog = ''
     this.process.stdout?.on('data', (data) => {
       console.log(`[Python] ${data.toString().trim()}`)
     })
 
     this.process.stderr?.on('data', (data) => {
-      console.error(`[Python] ${data.toString().trim()}`)
+      const msg = data.toString().trim()
+      console.error(`[Python] ${msg}`)
+      stderrLog += msg + '\n'
     })
 
     this.process.on('error', (err) => {
       console.error('Failed to start Python backend:', err)
+      startupError = err.message
+      processExited = true
     })
 
     this.process.on('exit', (code) => {
       console.log(`Python backend exited with code ${code}`)
+      if (!processExited) {
+        startupError = `Python backend exited with code ${code}\n${stderrLog.slice(-1000)}`
+      }
+      processExited = true
       this.process = null
     })
 
-    // Wait for the server to be ready
-    await this.waitForReady()
+    // Wait for the server to be ready, checking for early crash
+    await this.waitForReady(() => processExited, () => startupError || stderrLog.slice(-1000))
   }
 
   async stop(): Promise<void> {
@@ -318,9 +335,17 @@ export class PythonBridge {
     return join(this.getServerCwd(), 'server', 'main.py')
   }
 
-  private async waitForReady(timeout = 60000): Promise<void> {
+  private async waitForReady(
+    hasCrashed: () => boolean = () => false,
+    getError: () => string = () => '',
+    timeout = 60000
+  ): Promise<void> {
     const start = Date.now()
     while (Date.now() - start < timeout) {
+      // Check if process crashed
+      if (hasCrashed()) {
+        throw new Error(`Python backend crashed during startup:\n${getError()}`)
+      }
       try {
         await fetch(`${this.baseUrl}/api/health`)
         console.log('Python backend is ready')
@@ -329,6 +354,10 @@ export class PythonBridge {
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
-    console.warn('Python backend did not become ready within timeout, continuing anyway')
+    throw new Error(
+      'Python backend did not start within 60 seconds.\n' +
+      'This usually means a dependency is missing or the venv is corrupted.\n' +
+      `Last output:\n${getError()}`
+    )
   }
 }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { PythonBridge } from './python-bridge'
@@ -63,7 +63,20 @@ app.whenReady().then(async () => {
     return
   }
 
-  await pythonBridge.start()
+  try {
+    await pythonBridge.start()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('Backend start failed:', msg)
+    await dialog.showMessageBox({
+      type: 'error',
+      title: 'Backend Failed to Start',
+      message: 'The Python backend could not start.\n\n' + msg +
+        '\n\nTry deleting the python/venv folder in the install directory and restarting the app.',
+    })
+    app.quit()
+    return
+  }
 
   // Register IPC handlers
   registerIpcHandlers(ipcMain, pythonBridge)

@@ -305,6 +305,9 @@ export default function GeneratorView() {
     setIsGenerating(true)
     setError(null)
 
+    let successCount = 0
+    let hadError = false
+
     while (_queue.length > 0) {
       const item = _queue[0]
       notifyQueueChange()
@@ -332,12 +335,20 @@ export default function GeneratorView() {
           timestamp: Date.now()
         }
         addSample(sample)
+        successCount++
         const libId = await autoSaveToLibrary(sample)
         if (libId) patchSample(sample.id, { libraryId: libId })
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Generation failed'
         setError(msg)
         toast('error', msg)
+        hadError = true
+        // Clear remaining queue on connection errors
+        if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED')) {
+          _queue.length = 0
+          notifyQueueChange()
+          break
+        }
       }
 
       // Remove processed item
@@ -347,7 +358,11 @@ export default function GeneratorView() {
 
     _isGenerating = false
     setIsGenerating(false)
-    toast('success', 'Generation complete')
+    if (successCount > 0) {
+      toast('success', `Generated ${successCount} sample${successCount > 1 ? 's' : ''}`)
+    } else if (!hadError) {
+      toast('info', 'Queue is empty')
+    }
   }, [])
 
   const handleGenerate = useCallback(() => {
@@ -673,7 +688,7 @@ export default function GeneratorView() {
 
             {/* Generate / Queue buttons */}
             <div className="flex gap-2 mt-1">
-              <button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()}
+              <button onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || !backendConnected}
                 className="flex-1 py-2 bg-orange-500 hover:bg-orange-400 disabled:bg-surface-700 disabled:text-gray-500 text-white font-medium rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
                 {isGenerating && queue.length === 0 ? (
                   <><FiRefreshCw className="animate-spin" size={14} /> Generating...</>
