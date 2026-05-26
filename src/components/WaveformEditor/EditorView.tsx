@@ -191,8 +191,8 @@ export default function EditorView() {
   const hasAudio = !!audioBase64
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4">
-      <header className="flex items-center justify-between">
+    <div className="h-full flex flex-col p-6">
+      <header className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-white font-display flex items-center gap-2"><FiEdit2 className="text-orange-400" /> Waveform Editor</h1>
           <p className="text-gray-400 text-sm mt-1">
@@ -216,40 +216,42 @@ export default function EditorView() {
         </div>
       </header>
 
-      {/* Waveform Display */}
-      <div
-        className="flex-1 min-h-[250px] rounded-lg"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleFileDrop}
-      >
-        {hasAudio ? (
-          <WaveformPlayer
-            key={waveformKey.current}
-            audioBase64={audioBase64!}
-            sampleRate={sampleRate}
-            height={220}
-            enableRegions
-            onRegionChange={(start, end) => { setRegionStart(start); setRegionEnd(end) }}
-          />
-        ) : (
-          <div className="h-full flex items-center justify-center border border-surface-700 border-dashed rounded-lg bg-surface-900/50">
-            <div className="text-center text-gray-500">
-              <FiUpload className="text-4xl mx-auto mb-3" />
-              <p>Drop an audio file here</p>
-              <p className="text-sm mt-1 text-gray-700">or generate audio and click "Edit"</p>
+      {/* Centered content area */}
+      <div className="flex-1 flex flex-col justify-center gap-4 min-h-0">
+        {/* Waveform Display */}
+        <div
+          className="rounded-lg"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleFileDrop}
+        >
+          {hasAudio ? (
+            <WaveformPlayer
+              key={waveformKey.current}
+              audioBase64={audioBase64!}
+              sampleRate={sampleRate}
+              height={280}
+              enableRegions
+              onRegionChange={(start, end) => { setRegionStart(start); setRegionEnd(end) }}
+            />
+          ) : (
+            <div className="h-[280px] flex items-center justify-center border border-surface-700 border-dashed rounded-lg bg-surface-900/50">
+              <div className="text-center text-gray-500">
+                <FiUpload className="text-4xl mx-auto mb-3" />
+                <p>Drop an audio file here</p>
+                <p className="text-sm mt-1 text-gray-700">or generate audio and click "Edit"</p>
+              </div>
             </div>
+          )}
+        </div>
+
+        {regionStart !== null && regionEnd !== null && (
+          <div className="text-sm text-gray-400 shrink-0">
+            Selection: {regionStart.toFixed(2)}s — {regionEnd.toFixed(2)}s ({(regionEnd - regionStart).toFixed(2)}s)
           </div>
         )}
-      </div>
 
-      {regionStart !== null && regionEnd !== null && (
-        <div className="text-sm text-gray-400">
-          Selection: {regionStart.toFixed(2)}s — {regionEnd.toFixed(2)}s ({(regionEnd - regionStart).toFixed(2)}s)
-        </div>
-      )}
-
-      {/* Editing Tools */}
-      <div className="bg-surface-900 border border-surface-700 rounded-lg p-4">
+        {/* Editing Tools */}
+        <div className="bg-surface-900 border border-surface-700 rounded-lg p-4 shrink-0">
         <div className="flex gap-2 flex-wrap items-end">
           {/* Trim */}
           <ToolButton icon={<FiScissors />} label="Trim" disabled={!hasAudio || isProcessing} onClick={handleTrim}
@@ -262,7 +264,7 @@ export default function EditorView() {
             {showParams === 'fadeIn' && (
               <ParamPopover onClose={() => setShowParams(null)} onApply={handleFadeIn}>
                 <label className="text-xs text-gray-400">Duration: {fadeInDuration}s</label>
-                <input type="range" min={0.1} max={5} step={0.1} value={fadeInDuration} onChange={(e) => setFadeInDuration(Number(e.target.value))} className="w-full accent-orange-400" />
+                <input type="range" min={0.1} max={5} step={0.1} value={fadeInDuration} onChange={(e) => setFadeInDuration(Number(e.target.value))} className="w-full" />
               </ParamPopover>
             )}
           </div>
@@ -274,7 +276,7 @@ export default function EditorView() {
             {showParams === 'fadeOut' && (
               <ParamPopover onClose={() => setShowParams(null)} onApply={handleFadeOut}>
                 <label className="text-xs text-gray-400">Duration: {fadeOutDuration}s</label>
-                <input type="range" min={0.1} max={5} step={0.1} value={fadeOutDuration} onChange={(e) => setFadeOutDuration(Number(e.target.value))} className="w-full accent-orange-400" />
+                <input type="range" min={0.1} max={5} step={0.1} value={fadeOutDuration} onChange={(e) => setFadeOutDuration(Number(e.target.value))} className="w-full" />
               </ParamPopover>
             )}
           </div>
@@ -289,7 +291,7 @@ export default function EditorView() {
             {showParams === 'gain' && (
               <ParamPopover onClose={() => setShowParams(null)} onApply={handleGain}>
                 <label className="text-xs text-gray-400">Gain: {gainDb > 0 ? '+' : ''}{gainDb}dB</label>
-                <input type="range" min={-20} max={20} step={0.5} value={gainDb} onChange={(e) => setGainDb(Number(e.target.value))} className="w-full accent-orange-400" />
+                <input type="range" min={-20} max={20} step={0.5} value={gainDb} onChange={(e) => setGainDb(Number(e.target.value))} className="w-full" />
               </ParamPopover>
             )}
           </div>
@@ -299,6 +301,7 @@ export default function EditorView() {
           <ToolButton icon={<FiDownload />} label="Export" disabled={!hasAudio} onClick={handleExport} />
           <ToolButton icon={<FiSave />} label="Save" disabled={!hasAudio} onClick={handleSave} primary />
         </div>
+      </div>
       </div>
 
       {showExport && audioBase64 && (

@@ -651,27 +651,27 @@ export default function GeneratorView() {
             </div>
           </div>
 
-          {/* Right: Params — each slider on its own row */}
-          <div className="flex flex-col gap-4">
+          {/* Right: Params */}
+          <div className="flex flex-col gap-5 bg-surface-900 border border-surface-700 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-gray-400 w-24 shrink-0 text-right">Duration: {duration}s</label>
               <input type="range" min={1} max={47} value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))} className="flex-1 accent-orange-400" />
+                onChange={(e) => setDuration(Number(e.target.value))} className="flex-1" />
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-gray-400 w-24 shrink-0 text-right">Steps: {steps}</label>
               <input type="range" min={10} max={200} step={10} value={steps}
-                onChange={(e) => setSteps(Number(e.target.value))} className="flex-1 accent-orange-400" />
+                onChange={(e) => setSteps(Number(e.target.value))} className="flex-1" />
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-gray-400 w-24 shrink-0 text-right">CFG Scale: {cfgScale}</label>
               <input type="range" min={1} max={15} step={0.5} value={cfgScale}
-                onChange={(e) => setCfgScale(Number(e.target.value))} className="flex-1 accent-orange-400" />
+                onChange={(e) => setCfgScale(Number(e.target.value))} className="flex-1" />
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-gray-400 w-24 shrink-0 text-right">Batch: {batchCount}</label>
               <input type="range" min={1} max={8} value={batchCount}
-                onChange={(e) => setBatchCount(Number(e.target.value))} className="flex-1 accent-orange-400" />
+                onChange={(e) => setBatchCount(Number(e.target.value))} className="flex-1" />
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-gray-400 w-24 shrink-0 text-right">Seed</label>
