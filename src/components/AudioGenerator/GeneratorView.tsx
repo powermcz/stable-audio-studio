@@ -565,7 +565,7 @@ export default function GeneratorView() {
                       <div>
                         <p>Open a terminal and run:</p>
                         <code className="block text-orange-300 bg-surface-900 px-2 py-1 rounded mt-1 select-all">
-                          huggingface-cli login
+                          hf auth login
                         </code>
                       </div>
                     </div>
@@ -714,7 +714,7 @@ export default function GeneratorView() {
           <div className="bg-red-900/30 border border-red-800 rounded-lg p-3 shrink-0">
             <p className="text-red-300 text-sm">{error}</p>
             {error.toLowerCase().includes('login') && (
-              <p className="text-red-400/70 text-xs mt-1">Run <code className="bg-red-900/30 px-1 rounded">huggingface-cli login</code> in a terminal, then restart the app.</p>
+              <p className="text-red-400/70 text-xs mt-1">Run <code className="bg-red-900/30 px-1 rounded">hf auth login</code> in a terminal, then restart the app.</p>
             )}
             {error.toLowerCase().includes('license') && (
               <p className="text-red-400/70 text-xs mt-1">

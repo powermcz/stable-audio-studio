@@ -53,28 +53,40 @@ class ModelService:
                 GatedRepoError,
                 RepositoryNotFoundError,
             )
+            from pathlib import Path
 
             api = HfApi()
-            # Check if user is logged in
+            # Check if user is logged in (try multiple token sources)
             token = api.token
+            if not token:
+                # Check common token file locations directly
+                for token_path in [
+                    Path.home() / ".cache" / "huggingface" / "token",
+                    Path.home() / ".huggingface" / "token",
+                ]:
+                    if token_path.exists():
+                        token = token_path.read_text().strip()
+                        if token:
+                            break
+
             if not token:
                 return {
                     "authenticated": False,
                     "has_access": False,
                     "username": None,
-                    "error": "Not logged in to HuggingFace. Run: huggingface-cli login",
+                    "error": "Not logged in to HuggingFace. Run: hf auth login",
                 }
 
             # Check who we are
             try:
-                user_info = api.whoami()
+                user_info = api.whoami(token=token)
                 username = user_info.get("name", "unknown")
             except Exception:
                 return {
                     "authenticated": False,
                     "has_access": False,
                     "username": None,
-                    "error": "HuggingFace token is invalid or expired. Run: huggingface-cli login",
+                    "error": "HuggingFace token is invalid or expired. Run: hf auth login",
                 }
 
             # Check if we can access the gated model
@@ -143,7 +155,7 @@ class ModelService:
             if "401" in err_str or "Unauthorized" in err_str:
                 self._error = (
                     "HuggingFace authentication failed. "
-                    "Please log in: open a terminal and run 'huggingface-cli login'"
+                    "Please log in: open a terminal and run 'hf auth login'"
                 )
             elif "403" in err_str or "Forbidden" in err_str or "gated repo" in err_str.lower():
                 self._error = (
