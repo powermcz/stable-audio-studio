@@ -18,11 +18,32 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
     })
 
     if (response === 0) {
-      autoUpdater.downloadUpdate()
+      try {
+        await autoUpdater.downloadUpdate()
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('Download update failed:', msg)
+        mainWindow.setProgressBar(-1)
+        mainWindow.setTitle('Stable Audio Studio')
+        dialog.showMessageBox(mainWindow, {
+          type: 'error',
+          title: 'Update Failed',
+          message: `Failed to download the update.\n\n${msg}\n\nYou can download it manually from the GitHub releases page.`,
+        })
+      }
     }
   })
 
+  autoUpdater.on('download-progress', (progress) => {
+    const pct = Math.round(progress.percent)
+    mainWindow.setProgressBar(pct / 100)
+    mainWindow.setTitle(`Stable Audio Studio - Downloading update ${pct}%`)
+  })
+
   autoUpdater.on('update-downloaded', async () => {
+    mainWindow.setProgressBar(-1)
+    mainWindow.setTitle('Stable Audio Studio')
+
     const { response } = await dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Ready',
@@ -37,7 +58,9 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('error', (err) => {
-    console.log('Auto-updater error:', err.message)
+    console.error('Auto-updater error:', err.message)
+    mainWindow.setProgressBar(-1)
+    mainWindow.setTitle('Stable Audio Studio')
   })
 
   // Check for updates after a short delay
