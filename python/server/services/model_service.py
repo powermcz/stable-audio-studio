@@ -1,6 +1,5 @@
 """Model loading and management service using diffusers."""
 
-import os
 import threading
 import torch
 from typing import Optional
@@ -49,12 +48,11 @@ class ModelService:
     def check_hf_auth(self) -> dict:
         """Check HuggingFace authentication status and model access."""
         try:
-            from huggingface_hub import HfApi, hf_hub_url
+            from huggingface_hub import HfApi
             from huggingface_hub.utils import (
                 GatedRepoError,
                 RepositoryNotFoundError,
             )
-            import requests
 
             api = HfApi()
             # Check if user is logged in
