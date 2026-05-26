@@ -16,9 +16,8 @@ release/
 # Electron
 *.asar
 
-# Model cache
-models/
-*.safetensors
+# Model cache (ML weights, not Python packages)
+/*.safetensors
 *.ckpt
 *.pt
 *.bin
